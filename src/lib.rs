@@ -44,6 +44,7 @@ impl ActionKV {
         debug_assert_eq!(data.len(), data_len  as usize);
 
         let checksum = crc32::checksum_ieee(&data);
+        println!("expect checksum=>{}, actura=>{}", &saved_checksum, &checksum);
         if checksum != saved_checksum {
             panic!(
                 "data corruption encountered ({:08x}) ({:08x})", checksum, saved_checksum
@@ -58,7 +59,7 @@ impl ActionKV {
         self.f.seek(SeekFrom::End(0))
     }
 
-    fn load(&mut self) -> io::Result<()>{
+    pub fn load(&mut self) -> io::Result<()>{
         let mut f = BufReader::new(&mut self.f);
         loop{
             let current_pos = f.seek(SeekFrom::Current((0)))?;
@@ -79,7 +80,7 @@ impl ActionKV {
         Ok(())
     }
 
-    fn get(&mut self, key: &ByteString) -> io::Result<Option<ByteString>> {
+    pub fn get(&mut self, key: &ByteStr) -> io::Result<Option<ByteString>> {
         let pos = match self.index.get(key) {
             None => return Ok(None),
             Some(pos) => *pos,
@@ -94,7 +95,7 @@ impl ActionKV {
         Ok(ActionKV::process_record(&mut f)?)
     }
 
-    fn find(&mut self, target: &ByteString) -> io::Result<Option<KeyValuePair>> {
+    fn find(&mut self, target: &ByteStr) -> io::Result<Option<KeyValuePair>> {
         let mut f = BufReader::new(&mut self.f);
         f.seek(SeekFrom::Current(0));
         loop {
@@ -118,7 +119,7 @@ impl ActionKV {
         Ok(None)
     }
 
-    fn insert(&mut self, key: &ByteStr, value: &ByteStr) -> io::Result<()>{
+    pub fn insert(&mut self, key: &ByteStr, value: &ByteStr) -> io::Result<()>{
         let pos = self.insert_but_ignore_index(key, value)?;
         self.index.insert(key.to_vec(), pos);
         Ok(())
@@ -141,16 +142,15 @@ impl ActionKV {
         f.write_u32::<LittleEndian>(check_sum);
         f.write_u32::<LittleEndian>(key_len as u32);
         f.write_u32::<LittleEndian>(value_len as u32);
-        f.write_u32::<LittleEndian>((key_len + value_len) as u32);
         f.write_all(&data);
         Ok(current_pos)
     }
 
-    fn update(&mut self, key: &ByteString, value: &ByteString) -> io::Result<()>{
+    pub fn update(&mut self, key: &ByteStr, value: &ByteStr) -> io::Result<()>{
         self.insert(key, value)
     }
 
-    fn delete(&mut self, key: &ByteStr) -> io::Result<()> {
+    pub fn delete(&mut self, key: &ByteStr) -> io::Result<()> {
         self.insert(key, b"")
     
     }
